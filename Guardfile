@@ -68,15 +68,7 @@ puts "#{paths.inspect} deleted?"
         end
         to_run
       end
-      result = Kernel.system("make test")
-      if _command_success?(result)
-        puts "YaY!"
-      end
-    end
-
-    def _command_success?(success)
-      return false if success.nil?
-      success || ($?.exitstatus == 0)
+      Kernel.system("make test")
     end
 
   end

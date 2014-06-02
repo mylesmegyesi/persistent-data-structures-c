@@ -1,29 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "persistent_array_map.h"
-
-array_t* make_array(int size) {
-  array_t* arr = malloc(sizeof(array_t));
-  arr->arr = malloc(size * sizeof(void*));
-  arr->size = size;
-  return arr;
-}
-
-void array_set(array_t* arr, unsigned int index, void* value) {
-  arr->arr[index] = value;
-}
-
-void* array_get(array_t* arr, unsigned int index) {
-  return arr->arr[index];
-}
-
-void array_copy(array_t* source, unsigned int source_index, array_t* destination, unsigned int destination_index, unsigned int length) {
-  unsigned int i, j;
-  for (i = source_index, j=destination_index; i < source->size; i++, j++) {
-    array_set(destination, j, array_get(source, i));
-  }
-}
+#include "array.h"
 
 persistent_array_map_t* make_persistent_array_map() {
   persistent_array_map_t* map = malloc(sizeof(persistent_array_map_t));
@@ -82,4 +60,9 @@ map_value_t* map_get(persistent_array_map_t* map, map_key_t* key) {
 
 int map_count(persistent_array_map_t* map) {
   return map->arr->size / 2;
+}
+
+void free_persistent_array_map(persistent_array_map_t* map) {
+  free_array(map->arr);
+  free(map);
 }
