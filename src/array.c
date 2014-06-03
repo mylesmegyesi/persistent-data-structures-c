@@ -1,5 +1,8 @@
 #include <stdlib.h>
+#include <string.h>
 #include "array.h"
+
+#include <stdio.h>
 
 array_t* make_array(int size) {
   array_t* arr = malloc(sizeof(array_t));
@@ -17,10 +20,10 @@ void* array_get(array_t* arr, unsigned int index) {
 }
 
 void array_copy(array_t* source, unsigned int source_index, array_t* destination, unsigned int destination_index, unsigned int length) {
-  unsigned int i, j;
-  for (i = source_index, j=destination_index; i < source->size; i++, j++) {
-    array_set(destination, j, array_get(source, i));
-  }
+  void* source_start = &source->arr[source_index];
+  void* destination_start = &destination->arr[destination_index];
+  unsigned int num = length * sizeof(void*);
+  memcpy(destination_start, source_start, num);
 }
 
 void free_array(array_t* arr) {
