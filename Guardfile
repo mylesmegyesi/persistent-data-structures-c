@@ -1,57 +1,32 @@
 require 'guard'
 require 'guard/plugin'
 require 'pry'
+require 'erb'
 
 module ::Guard
   class Test < ::Guard::Plugin
 
-    # Called when just `enter` is pressed
-    # This method should be principally used for long action like running all specs/tests/...
-    #
-    # @raise [:task_has_failed] when run_all has failed
-    # @return [Object] the task result
-    #
     def run_all
-      run_paths(['test'])
+      Kernel.system("make test")
     end
 
-    # Default behaviour on file(s) changes that the Guard plugin watches.
-    # @param [Array<String>] paths the changes files or paths
-    # @raise [:task_has_failed] when run_on_change has failed
-    # @return [Object] the task result
-    #
+    def start
+      run_all
+    end
+
     def run_on_changes(paths)
       run_paths(paths)
     end
 
-    # Called on file(s) additions that the Guard plugin watches.
-    #
-    # @param [Array<String>] paths the changes files or paths
-    # @raise [:task_has_failed] when run_on_additions has failed
-    # @return [Object] the task result
-    #
     def run_on_additions(paths)
       run_paths(paths)
     end
 
-    # Called on file(s) modifications that the Guard plugin watches.
-    #
-    # @param [Array<String>] paths the changes files or paths
-    # @raise [:task_has_failed] when run_on_modifications has failed
-    # @return [Object] the task result
-    #
     def run_on_modifications(paths)
       run_paths(paths)
     end
 
-    # Called on file(s) removals that the Guard plugin watches.
-    #
-    # @param [Array<String>] paths the changes files or paths
-    # @raise [:task_has_failed] when run_on_removals has failed
-    # @return [Object] the task result
-    #
     def run_on_removals(paths)
-puts "#{paths.inspect} deleted?"
     end
 
     def run_paths(paths)
@@ -67,8 +42,55 @@ puts "#{paths.inspect} deleted?"
           end
         end
         to_run
+      end.uniq
+      if !runnable.empty?
+        main_template = ERB.new(<<-MAIN
+<% headers.each do |header| %>
+#include "<%= header %>"
+<% end %>
+
+int main()
+{
+  <% tests.each do |test| %>
+  <%= test %>
+  <% end %>
+  return 0;
+}
+MAIN
+)
+        headers = runnable.map do |path|
+          path.sub('test/', '').chomp(File.extname(path)) + ".h"
+        end
+        tests = runnable.map do |path|
+          File.basename(path, File.extname(path)) + "s();"
+        end
+        with_test_main(main_template.result(binding)) do |main_filename|
+          main_object_file = replace_extension(main_filename, ".o")
+          test_objects = runnable.map do |path|
+            replace_extension(path, ".o")
+          end.join(" ")
+          cmd = "make TEST_MAIN=\"#{main_object_file}\" TESTS=\"#{test_objects}\" test_isolated"
+          Kernel.system(cmd)
+        end
       end
-      Kernel.system("make test")
+    end
+
+    def replace_extension(filename, new_ext)
+      filename.chomp(File.extname(filename)) + new_ext
+    end
+
+    def with_test_main(body, &block)
+      filename = "out/#{random_string}_test_main.c"
+      File.open(filename, 'w') { |file| file.write(body) }
+      begin
+        block.call(filename)
+      ensure
+        File.delete(filename)
+      end
+    end
+
+    def random_string
+      (0...8).map { (65 + rand(26)).chr }.join
     end
 
   end
@@ -91,7 +113,7 @@ guard 'test' do
     "test/#{match[1]}_test.c"
   end
 
-  watch('test/main.c') do ||
+  watch('test/all_test_main.c') do ||
     'test'
   end
 
