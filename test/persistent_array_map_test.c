@@ -2,9 +2,10 @@
 #include<stdio.h>
 #include<string.h>
 #include<assert.h>
-#include "persistent_array_map_test.h"
-#include "persistent_array_map.h"
 #include "map_key.h"
+#include "map_value.h"
+#include "persistent_array_map.h"
+#include "persistent_array_map_test.h"
 
 int integer_value_equals(map_value_t* self, map_value_t* other) {
   return *(int*)self->obj == *(int*)other->obj;
@@ -54,7 +55,7 @@ void associates_a_key_to_a_value() {
   assert(map_count(map_two) == 1);
 
   free_map_key(key);
-  free(value);
+  free_map_value(value);
   free_persistent_array_map(map);
   free_persistent_array_map(map_two);
 }
@@ -71,7 +72,7 @@ void does_not_mutate_the_map_on_assoc() {
   assert(map_count(map_two) == 1);
 
   free_map_key(key);
-  free(value);
+  free_map_value(value);
   free_persistent_array_map(map);
   free_persistent_array_map(map_two);
 }
@@ -93,8 +94,8 @@ void associates_to_a_key_that_exists_but_the_value_is_not_the_same() {
 
   free_map_key(key);
   free_map_key(different_key_same_value);
-  free(different_value);
-  free(value);
+  free_map_value(value);
+  free_map_value(different_value);
   free_persistent_array_map(map);
   free_persistent_array_map(map_two);
   free_persistent_array_map(map_three);
@@ -113,14 +114,16 @@ void associates_to_a_key_that_exists_and_the_value_is_the_same() {
   persistent_array_map_t* map_three = map_assoc(map_two, different_key_same_value, different_value);
 
   assert(map_two == map_three);
+  //assert(persistent_array_map_equals(map_two, map_three));
+  //assert(map_two != map_three);
 
   free_map_key(key);
   free_map_key(different_key_same_value);
-  free(value);
-  free(different_value);
+  free_map_value(value);
+  free_map_value(different_value);
   free_persistent_array_map(map);
   free_persistent_array_map(map_two);
-  //free(map_three);
+  //free_persistent_array_map(map_three);
 }
 
 void associates_multiple_items() {
@@ -142,8 +145,8 @@ void associates_multiple_items() {
 
   free_map_key(key_one);
   free_map_key(key_two);
-  free(value_one);
-  free(value_two);
+  free_map_value(value_one);
+  free_map_value(value_two);
   free_persistent_array_map(map);
   free_persistent_array_map(map_two);
   free_persistent_array_map(map_three);
@@ -174,13 +177,61 @@ void associates_multiple_items_then_to_a_key_that_exists() {
   free_map_key(key_one);
   free_map_key(key_two);
   free_map_key(different_key_one);
-  free(value_one);
-  free(value_two);
-  free(value_three);
+  free_map_value(value_one);
+  free_map_value(value_two);
+  free_map_value(value_three);
   free_persistent_array_map(map);
   free_persistent_array_map(map_two);
   free_persistent_array_map(map_three);
   free_persistent_array_map(map_four);
+}
+
+void associating_lots_of_data() {
+  int iters = 1000;
+  array_t* key_strings = make_array(iters);
+  array_t* keys = make_array(iters);
+  array_t* int_values = make_array(iters);
+  array_t* values = make_array(iters);
+  persistent_array_map_t* map = make_persistent_array_map();
+  int i;
+  for (i = 0; i < iters; i++) {
+    char* key_string = (char*)malloc(sizeof(char) * 10);
+    sprintf(key_string, "key%d", i);
+    map_key_t* key = make_string_map_key(key_string);
+    int* i_value = malloc(sizeof(int));
+    *i_value = i;
+    map_value_t* value = make_integer_map_value(i_value);
+    persistent_array_map_t* new_map = map_assoc(map, key, value);
+
+    assert(map_count(new_map) == (i + 1));
+    map_value_t* found_value = map_get(new_map, key);
+    assert(*(int*)found_value->obj == *i_value);
+
+    free_persistent_array_map(map);
+    map = new_map;
+    array_set(keys, i, (void*)key);
+    array_set(key_strings, i, (void*)key_string);
+    array_set(values, i, (void*)value);
+    array_set(int_values, i, (void*)i_value);
+  }
+
+  for(i = 0; i < iters; i++) {
+    map_key_t* key = (map_key_t*)array_get(keys, i);
+    char* key_string = (char*)array_get(key_strings, i);
+    map_value_t* value = (map_value_t*)array_get(values, i);
+    int* int_value = (int*)array_get(int_values, i);
+    free_map_key(key);
+    free(key_string);
+    free_map_value(value);
+    free(int_value);
+  }
+
+  free_array(keys);
+  free_array(key_strings);
+  free_array(values);
+  free_array(int_values);
+
+  free_persistent_array_map(map);
 }
 
 void persistent_array_map_tests() {
@@ -191,4 +242,7 @@ void persistent_array_map_tests() {
   associates_to_a_key_that_exists_and_the_value_is_the_same();
   associates_multiple_items();
   associates_multiple_items_then_to_a_key_that_exists();
+  //associates_null_to_a_key();
+  //associates_null_to_a_key_twice();
+  associating_lots_of_data();
 }

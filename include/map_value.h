@@ -6,4 +6,6 @@ typedef struct MapValue {
   int (* equals)(struct MapValue* self, struct MapValue* other);
 } map_value_t;
 
+void free_map_value(map_value_t* value);
+
 #endif
